@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2d3e47">
+<title>Scan Gudang ALMEC</title>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<style>
+:root{
+  --bg:#eef0ee; --surface:#ffffff; --ink:#1d2428; --muted:#5d686c; --line:#d5dad7;
+  --accent:#f2a900; --accent-ink:#2a2000; --steel:#2d3e47;
+  --in:#1f7a4a; --in-bg:#e2f2e8; --out:#b4441c; --out-bg:#fbe7dd; --warn:#9a6b00; --warn-bg:#fdf1cf;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#141a1d; --surface:#1d2529; --ink:#e7ecea; --muted:#9aa6a9; --line:#33403f;
+  --accent:#f5b81e; --accent-ink:#231a00; --steel:#0f1518;
+  --in:#5fd093; --in-bg:#183526; --out:#ff8f63; --out-bg:#3d2116; --warn:#f2c75c; --warn-bg:#3a2f12; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--body)}
+[hidden]{display:none!important}
+header{position:sticky;top:0;z-index:5;background:var(--steel);color:#f3f5f4}
+header .in{max-width:760px;margin:0 auto;padding:10px 16px 0;display:grid;gap:8px}
+.brand{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.brand h1{font:700 1.55rem/1 var(--display);letter-spacing:.02em;margin:0;text-transform:uppercase}
+.brand h1 span{color:var(--accent)}
+.sync{font:500 .75rem/1.2 var(--mono);color:#b9c4c7;display:flex;gap:8px;align-items:center}
+.sync button{background:transparent;border:1px solid #56686f;color:#e7ecea;border-radius:6px;padding:4px 8px;font:inherit}
+nav{display:flex}
+nav button{flex:1;background:transparent;border:0;color:#b9c4c7;font:600 1.05rem/1 var(--display);letter-spacing:.06em;text-transform:uppercase;padding:10px 4px 11px;border-bottom:3px solid transparent}
+nav button[aria-selected="true"]{color:#fff;border-bottom-color:var(--accent)}
+main{max-width:760px;margin:0 auto;padding:14px 16px 60px;display:grid;gap:14px}
+.view{display:grid;gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:12px;min-width:0}
+.label{font:600 .72rem/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h2{font:700 1.25rem/1.1 var(--display);letter-spacing:.03em;text-transform:uppercase;margin:0}
+.mode{display:grid;grid-template-columns:1fr 1fr;border:2px solid var(--line);border-radius:10px;overflow:hidden}
+.mode button{border:0;background:var(--surface);color:var(--muted);padding:12px 6px;font:700 1.15rem/1 var(--display);letter-spacing:.05em;text-transform:uppercase}
+.mode button small{display:block;font:500 .72rem/1.3 var(--body);letter-spacing:0;text-transform:none;margin-top:3px}
+.mode button.on.in{background:var(--in);color:#fff}
+.mode button.on.out{background:var(--out);color:#fff}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:10px 14px;font:600 .95rem/1.1 var(--body);display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+.btn:disabled{opacity:.5}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.big{padding:14px 18px;font-size:1rem}
+.btn.go-in{background:var(--in);border-color:var(--in);color:#fff}
+.btn.go-out{background:var(--out);border-color:var(--out);color:#fff}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+input[type=text],input[type=number],input[type=date],input[type=search],input[type=password]{width:100%;min-width:0;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:10px 12px;font:500 1rem/1.2 var(--body)}
+input.code{font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.msg{font-size:.9rem;border-radius:8px;padding:9px 12px}
+.msg.ok{background:var(--in-bg);color:var(--in)}
+.msg.err{background:var(--out-bg);color:var(--out)}
+.msg.warn{background:var(--warn-bg);color:var(--warn)}
+.lines{display:grid;border-top:1px dashed var(--line)}
+.line{display:grid;grid-template-columns:1fr auto;gap:6px 12px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.nm{font-weight:500;overflow-wrap:anywhere}
+.code-t{font:600 .82rem/1 var(--mono);color:var(--muted)}
+.meta{font-size:.8rem;color:var(--muted)}
+.meta b{color:var(--ink);font-variant-numeric:tabular-nums}
+.qty{display:flex;align-items:center;gap:4px}
+.qty button{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:600 1.1rem/1 var(--body)}
+.qty input{width:64px;text-align:center;padding:7px 4px}
+.rm{background:none;border:0;color:var(--muted);font-size:.8rem;text-decoration:underline;padding:2px 0;justify-self:start}
+.empty{color:var(--muted);font-size:.92rem;padding:6px 0}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form .f{display:grid;gap:5px;min-width:0}
+.form .full{grid-column:1/-1}
+@media (max-width:480px){.form{grid-template-columns:1fr}}
+.confirm{border:2px solid var(--accent);border-radius:10px;padding:12px;display:grid;gap:10px;background:var(--warn-bg)}
+.receipt{font-family:var(--mono);font-size:.82rem;display:grid;gap:4px}
+.pill{display:inline-block;border-radius:999px;padding:2px 8px;font:700 .72rem/1.4 var(--body)}
+.pill.in{background:var(--in-bg);color:var(--in)} .pill.out,.pill.zero{background:var(--out-bg);color:var(--out)} .pill.order{background:var(--warn-bg);color:var(--warn)}
+.hist{display:grid;gap:8px}
+.hist .h{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:.85rem;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:5px 11px;font:500 .82rem/1.2 var(--body)}
+.chip[aria-pressed="true"]{background:var(--steel);border-color:var(--steel);color:#fff}
+.srow{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.srow .num{font:600 1.3rem/1 var(--display);text-align:right}
+.srow .num small{display:block;font:500 .72rem/1.3 var(--body);color:var(--muted)}
+.srow .acts{grid-column:1/-1;display:flex;gap:8px}
+.srow .acts button{font-size:.8rem;padding:5px 10px}
+.note{font-size:.85rem;color:var(--muted)}
+.scanner{position:fixed;inset:0;z-index:50;background:#000;display:grid;grid-template-rows:1fr auto}
+.scanner video{width:100%;height:100%;object-fit:cover;min-height:0}
+.scanner .frame{position:absolute;left:50%;top:42%;width:min(70vw,320px);aspect-ratio:1;transform:translate(-50%,-50%);border:3px solid var(--accent);border-radius:14px;box-shadow:0 0 0 100vmax rgba(0,0,0,.45)}
+.scanner .bar{background:#111;color:#fff;padding:12px 16px calc(14px + env(safe-area-inset-bottom,0px));display:grid;gap:10px}
+.scanner .bar .last{font:500 .95rem/1.3 var(--body);min-height:2.6em}
+.scanner .bar .last.ok{color:#7ee2a8}.scanner .bar .last.err{color:#ff9a7a}
+.scanner .bar .actions{justify-content:space-between}
+.scanner .count{font:700 1.1rem/1 var(--display);letter-spacing:.04em}
+
+
+:root{ --pin:#2563a8; --pin-bg:#e1ecf8; --ret:#0f7c7c; --ret-bg:#dcf2f1 }
+@media (prefers-color-scheme: dark){:root{ --pin:#7fb2ec; --pin-bg:#1a2c42; --ret:#5fd0cf; --ret-bg:#163636 }}
+.modes{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+@media (max-width:520px){.modes{grid-template-columns:repeat(3,1fr)}}
+.modes button{border:2px solid var(--line);background:var(--surface);color:var(--muted);border-radius:10px;padding:10px 4px;font:700 1rem/1 var(--display);letter-spacing:.05em;text-transform:uppercase}
+.modes button small{display:block;font:500 .68rem/1.25 var(--body);letter-spacing:0;text-transform:none;margin-top:3px}
+.modes button.on[data-m="masuk"]{background:var(--in);border-color:var(--in);color:#fff}
+.modes button.on[data-m="sj"],.modes button.on[data-m="fpb"]{background:var(--out);border-color:var(--out);color:#fff}
+.modes button.on[data-m="pinjam"]{background:var(--pin);border-color:var(--pin);color:#fff}
+.modes button.on[data-m="kembali"]{background:var(--ret);border-color:var(--ret);color:#fff}
+.btn.go-masuk{background:var(--in);border-color:var(--in);color:#fff}
+.btn.go-sj,.btn.go-fpb{background:var(--out);border-color:var(--out);color:#fff}
+.btn.go-pinjam{background:var(--pin);border-color:var(--pin);color:#fff}
+.btn.go-kembali{background:var(--ret);border-color:var(--ret);color:#fff}
+select{width:100%;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:10px 12px;font:500 1rem/1.2 var(--body)}
+.seg{display:flex;gap:6px}
+.seg button{flex:1;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:10px;font:600 .95rem/1 var(--body)}
+.seg button.on{background:var(--steel);border-color:var(--steel);color:#fff}
+.req{color:var(--out)}
+.pill.pinjam{background:var(--pin-bg);color:var(--pin)} .pill.kembali{background:var(--ret-bg);color:var(--ret)} .pill.masuk{background:var(--in-bg);color:var(--in)} .pill.sj,.pill.fpb{background:var(--out-bg);color:var(--out)}
+.loan{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.loan.late .meta b{color:var(--out)}
+nav button{font-size:.98rem}
+</style>
+</head>
+<body>
+<header><div class="in">
+  <div class="brand"><h1>Gudang <span>ALMEC</span></h1>
+    <div class="sync"><span id="syncTxt">Memuat data…</span><button id="refreshBtn" type="button">Muat ulang</button></div></div>
+  <nav>
+    <button id="tab-scan" aria-selected="true" data-tab="scan">Transaksi</button>
+    <button id="tab-pinjam" aria-selected="false" data-tab="pinjam">Dipinjam</button>
+    <button id="tab-stok" aria-selected="false" data-tab="stok">Stok</button>
+  </nav>
+</div></header>
+
+<main>
+  <div id="globalMsg" hidden></div>
+
+  <section id="pinView" class="card" hidden>
+    <h2>Hubungkan ke gudang</h2>
+    <form id="pinForm" style="display:grid;gap:10px">
+      <div class="f" style="display:grid;gap:5px"><label class="label" for="apiInput">Link Web App (berakhiran /exec)</label>
+        <input type="text" id="apiInput" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off"></div>
+      <div class="f" style="display:grid;gap:5px"><label class="label" for="pinInput">PIN gudang</label>
+        <input type="password" id="pinInput" inputmode="numeric" placeholder="PIN"></div>
+      <button class="btn primary">Hubungkan</button>
+    </form>
+    <div id="pinMsg" class="msg err" hidden></div>
+    <div class="note">Link dan PIN disimpan di HP ini. Minta ke admin gudang.</div>
+  </section>
+
+  <section id="view-scan" class="view">
+    <div class="modes" id="modes">
+      <button type="button" data-m="masuk">Masuk<small>dari supplier</small></button>
+      <button type="button" data-m="sj">SJ<small>keluar eksternal</small></button>
+      <button type="button" data-m="fpb">FPB<small>keluar internal</small></button>
+      <button type="button" data-m="pinjam">Pinjam<small>alat kerja</small></button>
+      <button type="button" data-m="kembali">Kembali<small>alat dipinjam</small></button>
+    </div>
+
+    <div class="card">
+      <div class="label">1 · Scan barang</div>
+      <div class="actions">
+        <button type="button" class="btn primary big" id="camBtn">📷 Kamera</button>
+        <button type="button" class="btn big" id="galBtn">🖼️ Pilih foto</button>
+        <input type="file" id="photo" accept="image/*" capture="environment" hidden>
+        <input type="file" id="photo2" accept="image/*" hidden>
+        <input type="file" id="photo3" accept="image/*,application/pdf" capture="environment" hidden>
+      </div>
+      <form id="codeForm" autocomplete="off"><input type="text" id="codeInput" class="code" placeholder="Ketik / tempel kode, atau scanner, lalu Enter"></form>
+      <div id="scanMsg" class="msg" hidden></div>
+    </div>
+
+    <div class="card" id="cartCard">
+      <div style="display:flex;justify-content:space-between;gap:8px"><div class="label">2 · Daftar barang <span id="cartCount"></span></div><button type="button" class="rm" id="clearCart">Kosongkan</button></div>
+      <div id="cart" class="lines"></div>
+    </div>
+
+    <div class="card" id="retCard" hidden>
+      <div class="label">2 · Pilih alat yang dikembalikan</div>
+      <input type="search" id="retQ" placeholder="Cari peminjam, kode, atau no pinjam">
+      <div id="retList"></div>
+    </div>
+
+    <div class="card">
+      <div class="label">3 · Data dokumen</div>
+      <div id="formBox" class="form"></div>
+    </div>
+
+    <div class="card"><div class="label">4 · Simpan</div><div id="saveArea"></div></div>
+    <div class="card"><h2>Riwayat (HP ini)</h2><div id="hist" class="hist"></div></div>
+  </section>
+
+  <section id="view-pinjam" class="card" hidden>
+    <h2>Alat sedang dipinjam</h2>
+    <input type="search" id="pjQ" placeholder="Cari peminjam, kode, atau nama alat">
+    <div class="note" id="pjInfo"></div>
+    <div id="pjList"></div>
+  </section>
+
+  <section id="view-stok" class="card" hidden>
+    <h2>Stok barang</h2>
+    <input type="search" id="stokQ" placeholder="Cari kode, nama, atau lokasi">
+    <div class="chips" id="stokFilters">
+      <button type="button" class="chip" data-f="all" aria-pressed="true">Semua</button>
+      <button type="button" class="chip" data-f="order" aria-pressed="false">Perlu order</button>
+      <button type="button" class="chip" data-f="zero" aria-pressed="false">Stok 0 / minus</button>
+      <button type="button" class="chip" data-f="pinjam" aria-pressed="false">Ada yang dipinjam</button>
+    </div>
+    <div class="note" id="stokInfo"></div>
+    <div id="stokList"></div>
+  </section>
+</main>
+<div class="scanner" id="scanner" hidden>
+  <div style="position:relative;min-height:0"><video id="scanVideo" playsinline muted></video><div class="frame"></div></div>
+  <div class="bar">
+    <div class="last" id="scanLast">Arahkan kamera ke label QR.</div>
+    <div class="actions"><span class="count" id="scanCount">0 scan</span>
+      <button type="button" class="btn" id="torchBtn" hidden>🔦 Senter</button>
+      <button type="button" class="btn primary" id="scanDone">Selesai</button></div>
+  </div>
+</div>
+<datalist id="dl-supplier"></datalist><datalist id="dl-customer"></datalist><datalist id="dl-alamat"></datalist>
+<datalist id="dl-peminta"></datalist><datalist id="dl-bagian"></datalist><datalist id="dl-peminjam"></datalist><datalist id="dl-spk"></datalist>
+
+<script>
+const KODE_AWAL = (new URLSearchParams(location.search).get("kode") || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+(() => {
+const $ = id => document.getElementById(id);
+const store = { get(k, d){ try{ const v = localStorage.getItem("gdg_" + k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+                set(k, v){ try{ localStorage.setItem("gdg_" + k, JSON.stringify(v)); }catch(e){} } };
+
+const MODES = {
+  masuk:  { nama: "Barang Masuk", tombol: "Simpan Barang Masuk", fields: [
+    ["tanggal","Tanggal tiba","date"],["tglSJ","Tanggal SJ supplier","date"],["supplier","Supplier","text","supplier",1],["noSJ","No SJ supplier","text"],["remark","Remarks","text"],["pic","PIC gudang","text"] ] },
+  sj:     { nama: "Surat Jalan", tombol: "Simpan Surat Jalan", fields: [
+    ["jenis","Jenis SJ","seg",["Pengiriman","Outsource"],1],["tanggal","Tanggal","date"],["penerima","Customer / penerima","text","customer",1],["alamat","Alamat","text","alamat"],
+    ["spk","SPK / Pekerjaan","text","spk"],["project","Project","text"],["remark","Keterangan","text"],["pic","PIC gudang","text"] ] },
+  fpb:    { nama: "FPB", tombol: "Simpan FPB", fields: [
+    ["tanggal","Tanggal","date"],["peminta","Peminta","text","peminta",1],["bagian","Bagian","text","bagian"],["spk","SPK / Pekerjaan","text","spk"],["project","Project","text"],["remark","Keterangan","text"],["pic","PIC gudang","text"] ] },
+  pinjam: { nama: "Peminjaman", tombol: "Simpan Peminjaman", fields: [
+    ["tanggal","Tanggal pinjam","date"],["peminjam","Peminjam","text","peminjam",1],["bagian","Bagian / lokasi kerja","text","bagian"],["rencana","Rencana kembali","date"],["remark","Keterangan","text"],["pic","PIC gudang","text"] ] },
+  kembali:{ nama: "Pengembalian", tombol: "Simpan Pengembalian", fields: [
+    ["tanggal","Tanggal kembali","date"],["ket","Kondisi / keterangan","text"],["pic","PIC gudang","text"] ] }
+};
+
+let items = [], byCode = new Map(), loans = [], loading = false, queued = KODE_AWAL || null;
+let pin = store.get("pin", "");
+let API = store.get("api", "");
+let mode = store.get("mode", "masuk"); if (!MODES[mode]) mode = "masuk";
+let cart = store.get("cart", []); if (!Array.isArray(cart)) cart = [];
+let forms = store.get("forms", {});
+let retSel = {};             // row -> qty kembali
+let hist = store.get("hist", []);
+let confirming = false, saving = false, receipt = null;
+
+const num = v => { const n = parseFloat(String(v == null ? "" : v).replace(",", ".")); return isFinite(n) ? n : 0; };
+const fmt = n => (Math.round(n * 100) / 100).toLocaleString("id-ID");
+const today = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+function el(tag, a, ...kids){ const e = document.createElement(tag); a = a || {};
+  for (const k in a) { const v = a[k]; if (k === "class") e.className = v; else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else if (v !== false && v != null) e.setAttribute(k, v === true ? "" : v); }
+  kids.flat().forEach(k => { if (k != null) e.append(k.nodeType ? k : document.createTextNode(String(k))); }); return e; }
+function msg(box, kind, text){ box.className = "msg " + kind; box.textContent = text; box.hidden = false; }
+async function run(fn, arg){
+  if (!API) throw new Error("PIN: Link Web App belum diisi.");
+  const body = fn === "ambilData" ? { action: fn, pin } : { action: fn, pin, data: arg };
+  let res;
+  try {
+    res = await fetch(API, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body), redirect: "follow" });
+  } catch (e) { throw new Error("Tidak bisa terhubung ke Web App. Cek internet dan link Web App (akses harus 'Anyone')."); }
+  let j; try { j = await res.json(); } catch (e) { throw new Error("Jawaban Web App tidak terbaca. Pastikan deployment 'Who has access: Anyone' dan versi terbaru sudah di-deploy."); }
+  if (!j.ok) throw new Error(j.error || "Gagal.");
+  return j.data;
+}
+const errText = e => (e && e.message ? e.message : String(e)).replace(/^Error:\s*/, "");
+const keluar = m => m === "sj" || m === "fpb" || m === "pinjam";
+function persist(){ store.set("cart", cart); store.set("mode", mode); store.set("hist", hist); store.set("forms", forms); }
+
+/* ---------- data ---------- */
+async function load(){
+  if (loading) return; loading = true; $("syncTxt").textContent = "Memuat data…";
+  try {
+    const r = await run("ambilData", pin);
+    items = r.items.map(a => ({ code: a[0], name: a[1], unit: a[2], stock: a[3], min: a[4], loc: a[5], lent: a[6] }));
+    byCode = new Map(items.map(i => [i.code, i]));
+    loans = r.pinjam || [];
+    Object.entries(r.saran || {}).forEach(([k, arr]) => { const dl = $("dl-" + k); if (dl) { dl.textContent = ""; arr.forEach(v => dl.append(el("option", { value: v }))); } });
+    $("syncTxt").textContent = items.length.toLocaleString("id-ID") + " barang · " + r.waktu;
+    $("pinView").hidden = true; $("globalMsg").hidden = true;
+  } catch (e) {
+    const t = errText(e); $("syncTxt").textContent = "Data belum termuat";
+    if (/PIN|Web App|terhubung|APP_PIN/.test(t)) { $("pinView").hidden = false; $("apiInput").value = API; if (API || pin) msg($("pinMsg"), "err", t); }
+    else msg($("globalMsg"), "err", "Gagal memuat: " + t);
+  } finally { loading = false; renderAll(); if (queued && items.length) { const c = queued; queued = null; addCode(c); } }
+}
+
+/* ---------- scan ---------- */
+function extract(raw){ const s = String(raw || "").toUpperCase();
+  const m = s.match(/KODE=([A-Z]{2,3}\d{3,5})/) || s.match(/#([A-Z]{2,3}\d{3,5})/) || s.match(/\b([A-Z]{2,3}\d{3,5})\b/); return m ? m[1] : s.trim().replace(/\s+/g, ""); }
+function addCode(raw){
+  const code = extract(raw), box = $("scanMsg"); if (!code) return;
+  if (!items.length) { queued = code; msg(box, "warn", "Data masih dimuat. " + code + " ditambahkan setelah siap."); return; }
+  const it = byCode.get(code);
+  if (!it) { msg(box, "err", "Kode " + code + " tidak ada di sheet Stok."); return; }
+  if (mode === "kembali") {
+    const open = loans.filter(l => String(l.kode).toUpperCase() === code);
+    if (!open.length) { msg(box, "warn", code + " tidak sedang dipinjam."); return; }
+    if (open.length === 1) retSel[open[0].row] = Math.min(open[0].sisa, (retSel[open[0].row] || 0) + 1);
+    $("retQ").value = code;
+    msg(box, "ok", open.length === 1 ? "Dipilih: " + code + " · " + open[0].peminjam : code + " dipinjam " + open.length + " orang. Pilih peminjamnya di daftar.");
+    confirming = false; receipt = null; renderRet(); renderSave(); return;
+  }
+  const ex = cart.find(l => l.code === code);
+  if (ex) ex.qty = num(ex.qty) + 1; else cart.unshift({ code, qty: 1 });
+  confirming = false; receipt = null; persist();
+  msg(box, "ok", (ex ? "Jumlah ditambah: " : "Ditambahkan: ") + code + " · " + it.name);
+  try { navigator.vibrate && navigator.vibrate(60); } catch(e){}
+  renderCart(); renderSave();
+}
+async function decode(file){
+  let img;
+  try { img = await createImageBitmap(file); }
+  catch(e){ img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = URL.createObjectURL(file); }); }
+  if ("BarcodeDetector" in window) { try { const d = new BarcodeDetector({ formats: await BarcodeDetector.getSupportedFormats() }); const r = await d.detect(img); if (r && r.length) return r[0].rawValue; } catch(e){} }
+  const W = img.width, H = img.height;
+  for (const max of [1000, 1600, 700, 2200]) {
+    const s = Math.min(1, max / Math.max(W, H)), w = Math.round(W * s), h = Math.round(H * s);
+    const c = document.createElement("canvas"); c.width = w; c.height = h; const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0, w, h);
+    const r = jsQR(x.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: "attemptBoth" }); if (r && r.data) return r.data;
+  }
+  return null;
+}
+async function onPhoto(e){
+  const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
+  msg($("scanMsg"), "ok", "Membaca QR dari foto…");
+  try { const c = await decode(f); c ? addCode(c) : msg($("scanMsg"), "err", "QR tidak terbaca. Foto lebih dekat, terang, dan tidak buram."); }
+  catch(err){ msg($("scanMsg"), "err", "Foto tidak bisa dibaca. Coba lagi atau ketik kodenya."); }
+}
+
+/* ---------- form ---------- */
+function fv(){ return forms[mode] = forms[mode] || {}; }
+function renderForm(){
+  const box = $("formBox"); box.textContent = ""; const v = fv();
+  MODES[mode].fields.forEach(([id, label, type, extra, req]) => {
+    if (type === "date" && !v[id] && (id === "tanggal")) v[id] = today();
+    const lab = el("label", { class: "label", for: "f-" + id }, label, req ? el("span", { class: "req" }, " *") : null);
+    let inp;
+    if (type === "seg") {
+      inp = el("div", { class: "seg", id: "f-" + id }, extra.map(o => el("button", { type: "button", class: v[id] === o ? "on" : "", onclick: () => { v[id] = o; persist(); renderForm(); renderSave(); } }, o)));
+    } else {
+      inp = el("input", { type: type, id: "f-" + id, value: v[id] || "", list: extra ? "dl-" + extra : null });
+      inp.addEventListener("input", () => { v[id] = inp.value; confirming = false; receipt = null; persist(); renderSave(); });
+    }
+    box.append(el("div", { class: "f" + (["remark","alamat","ket"].includes(id) ? " full" : "") }, lab, inp));
+  });
+  persist();
+}
+
+/* ---------- cart / return list ---------- */
+function renderCart(){
+  const box = $("cart"); box.textContent = "";
+  $("cartCount").textContent = cart.length ? "(" + cart.length + " baris)" : "";
+  if (!cart.length) { box.append(el("div", { class: "empty" }, "Belum ada barang. Scan label atau ketik kode.")); return; }
+  cart.forEach((l, i) => {
+    const it = byCode.get(l.code), s = it ? it.stock : 0;
+    const q = el("input", { type: "number", inputmode: "decimal", min: "0", step: "any", value: l.qty });
+    q.addEventListener("input", () => { l.qty = q.value; confirming = false; persist(); renderSave(); });
+    const step = d => () => { l.qty = Math.max(0, num(l.qty) + d); persist(); confirming = false; renderCart(); renderSave(); };
+    box.append(el("div", { class: "line" },
+      el("div", { style: "min-width:0;display:grid;gap:3px" },
+        el("span", { class: "code-t" }, l.code), el("span", { class: "nm" }, it ? it.name : "(tidak dikenal)"),
+        el("span", { class: "meta" }, "Stok ", el("b", {}, it ? fmt(s) : "–"), " ", it ? it.unit : "", it && it.lent ? " · dipinjam " + fmt(it.lent) : "", it && it.loc && it.loc !== "-" ? " · " + it.loc : ""),
+        keluar(mode) && it && num(l.qty) > s ? el("span", { class: "pill zero" }, "Melebihi stok") : null,
+        el("button", { type: "button", class: "rm", onclick: () => { cart.splice(i, 1); confirming = false; persist(); renderCart(); renderSave(); } }, "Hapus")),
+      el("div", { class: "qty" }, el("button", { type: "button", onclick: step(-1) }, "−"), q, el("button", { type: "button", onclick: step(1) }, "+"))));
+  });
+}
+function matchLoan(l, q){ if (!q) return true; const s = (l.no + " " + l.peminjam + " " + l.kode + " " + l.nama).toLowerCase(); return q.toLowerCase().split(/\s+/).every(w => s.includes(w)); }
+function renderRet(){
+  const box = $("retList"); box.textContent = "";
+  const q = $("retQ").value.trim();
+  const res = loans.filter(l => matchLoan(l, q));
+  if (!loans.length) { box.append(el("div", { class: "empty" }, "Tidak ada alat yang sedang dipinjam.")); return; }
+  if (!res.length) { box.append(el("div", { class: "empty" }, "Tidak ada yang cocok.")); return; }
+  res.slice(0, 60).forEach(l => {
+    const cur = retSel[l.row] || 0;
+    const q2 = el("input", { type: "number", inputmode: "decimal", min: "0", max: String(l.sisa), step: "any", value: cur || "" , placeholder: "0" });
+    q2.addEventListener("input", () => { const v = Math.min(num(q2.value), l.sisa); if (v > 0) retSel[l.row] = v; else delete retSel[l.row]; confirming = false; receipt = null; renderSave(); });
+    box.append(el("div", { class: "loan" },
+      el("div", { style: "min-width:0;display:grid;gap:3px" },
+        el("span", { class: "code-t" }, l.kode + " · " + l.no), el("span", { class: "nm" }, l.nama),
+        el("span", { class: "meta" }, el("b", {}, l.peminjam), " · sisa ", el("b", {}, fmt(l.sisa) + " " + l.satuan), " · pinjam " + l.tgl + (l.rencana ? " · rencana " + l.rencana : ""))),
+      el("div", { class: "qty" },
+        el("button", { type: "button", onclick: () => { retSel[l.row] = l.sisa; confirming = false; renderRet(); renderSave(); } }, "Semua"), q2)));
+  });
+}
+
+/* ---------- save ---------- */
+function check(){
+  const v = fv(), e = [];
+  if (!items.length) e.push("Data belum termuat.");
+  MODES[mode].fields.forEach(([id, label, , , req]) => { if (req && !String(v[id] || "").trim()) e.push("Isi " + label.toLowerCase() + "."); });
+  if (mode === "kembali") { if (!Object.keys(retSel).length) e.push("Pilih alat dan jumlah yang dikembalikan."); }
+  else if (!cart.some(l => num(l.qty) > 0)) e.push("Belum ada barang dengan jumlah > 0.");
+  return e;
+}
+function ringkasan(){
+  if (mode === "kembali") return Object.entries(retSel).map(([row, q]) => { const l = loans.find(x => String(x.row) === String(row)); return l ? "↩ " + fmt(q) + " " + l.satuan + "  " + l.kode + "  " + l.nama + " — " + l.peminjam : null; }).filter(Boolean);
+  const sign = mode === "masuk" ? "+" : "−";
+  return cart.filter(l => num(l.qty) > 0).map(l => { const it = byCode.get(l.code); return sign + fmt(num(l.qty)) + " " + it.unit + "  " + l.code + "  " + it.name; });
+}
+function renderSave(){
+  const box = $("saveArea"); box.textContent = "";
+  if (receipt) { box.append(el("div", { class: "msg ok" }, receipt.title), el("div", { class: "receipt" }, receipt.lines.map(t => el("div", {}, t))),
+    el("div", { class: "note" }, "Stok sudah diperbarui dan notifikasi Telegram terkirim.")); return; }
+  const e = check();
+  if (e.length) { box.append(el("div", { class: "note" }, "Sebelum menyimpan: " + e.join(" "))); return; }
+  if (!confirming) { box.append(el("button", { type: "button", class: "btn big go-" + mode, onclick: () => { confirming = true; renderSave(); } }, MODES[mode].tombol)); return; }
+  const over = keluar(mode) ? cart.filter(l => num(l.qty) > (byCode.get(l.code) || {}).stock) : [];
+  box.append(el("div", { class: "confirm" },
+    el("strong", {}, "Periksa sebelum disimpan — " + MODES[mode].nama),
+    el("div", { class: "receipt" }, ringkasan().map(t => el("div", {}, t))),
+    el("div", { class: "meta" }, MODES[mode].fields.map(([id, label]) => fv()[id] ? label + ": " + fv()[id] : null).filter(Boolean).join(" · ")),
+    over.length ? el("div", { class: "msg warn" }, over.length + " barang melebihi stok tercatat. Tetap bisa disimpan, stok akan minus.") : null,
+    el("div", { class: "actions" },
+      el("button", { type: "button", class: "btn primary", disabled: saving, onclick: save }, saving ? "Menyimpan…" : "Ya, simpan"),
+      el("button", { type: "button", class: "btn", disabled: saving, onclick: () => { confirming = false; renderSave(); } }, "Batal"))));
+}
+async function save(){
+  if (saving || check().length) return;
+  saving = true; renderSave();
+  const slow = setTimeout(() => { if (saving && !$("saveArea").querySelector(".slow")) $("saveArea").prepend(el("div", { class: "msg warn slow" }, "Masih diproses… jangan tekan simpan lagi.")); }, 20000);
+  const v = Object.assign({}, fv());
+  try {
+    let r, lines;
+    if (mode === "kembali") {
+      r = await run("kembalikan", { pin, tanggal: v.tanggal, pic: v.pic, ket: v.ket, items: Object.entries(retSel).map(([row, qty]) => ({ row: Number(row), qty })) });
+      lines = r.lines.map(x => "↩ " + fmt(x.qty) + " " + x.satuan + "  " + x.kode + " — " + x.peminjam + " (" + x.status + ")");
+      receipt = { title: "Pengembalian tersimpan.", lines };
+      retSel = {};
+    } else {
+      r = await run("simpanTransaksi", { pin, mode, header: v, lines: cart.filter(l => num(l.qty) > 0).map(l => ({ kode: l.code, qty: num(l.qty) })) });
+      lines = r.lines.map(x => (mode === "masuk" ? "+" : "−") + fmt(x.qty) + " " + x.satuan + "  " + x.kode + "  → stok " + fmt(x.stok));
+      receipt = { title: "Tersimpan: " + r.no, lines };
+      r.lines.forEach(x => { const it = byCode.get(x.kode); if (it) { it.stock = x.stok; if (mode === "pinjam") it.lent += x.qty; } });
+      cart = [];
+      ["noSJ", "remark"].forEach(k => { if (forms[mode]) delete forms[mode][k]; });
+    }
+    hist.unshift({ t: new Date().toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" }), mode, no: r.no || (r.lines[0] && r.lines[0].no) || "", ref: v.supplier || v.penerima || v.peminta || v.peminjam || (r.lines[0] && r.lines[0].peminjam) || "", n: lines.length });
+    hist = hist.slice(0, 40);
+    confirming = false; persist();
+    if (mode === "kembali" || mode === "pinjam") load();
+  } catch (err) {
+    confirming = false; clearTimeout(slow); saving = false; renderSave();
+    $("saveArea").prepend(el("div", { class: "msg err" }, "Gagal menyimpan: " + errText(err)));
+    return;
+  }
+  clearTimeout(slow); saving = false; renderAll();
+}
+
+/* ---------- views ---------- */
+function renderHist(){
+  const box = $("hist"); box.textContent = "";
+  if (!hist.length) { box.append(el("div", { class: "empty" }, "Belum ada transaksi dari HP ini.")); return; }
+  hist.slice(0, 15).forEach(h => box.append(el("div", { class: "h" },
+    el("span", { class: "pill " + h.mode }, h.mode.toUpperCase()), el("span", {}, el("b", {}, h.no), " · ", h.ref),
+    el("span"), el("span", { class: "meta" }, h.t + " · " + h.n + " baris"))));
+}
+function renderLoans(){
+  const box = $("pjList"); box.textContent = "";
+  const q = $("pjQ").value.trim(); const res = loans.filter(l => matchLoan(l, q));
+  const now = new Date(); const late = l => { if (!l.rencana) return false; const [d, m, y] = l.rencana.split("/").map(Number); return new Date(y, m - 1, d, 23, 59) < now; };
+  $("pjInfo").textContent = loans.length + " baris pinjaman aktif · " + loans.filter(late).length + " lewat rencana kembali";
+  if (!res.length) { box.append(el("div", { class: "empty" }, loans.length ? "Tidak ada yang cocok." : "Tidak ada alat yang sedang dipinjam.")); return; }
+  res.slice(0, 100).forEach(l => box.append(el("div", { class: "loan" + (late(l) ? " late" : "") },
+    el("div", { style: "min-width:0;display:grid;gap:3px" },
+      el("span", { class: "code-t" }, l.kode + " · " + l.no), el("span", { class: "nm" }, l.nama),
+      el("span", { class: "meta" }, el("b", {}, l.peminjam), l.bagian ? " (" + l.bagian + ")" : "", " · pinjam " + l.tgl, l.rencana ? el("span", {}, " · rencana ", el("b", {}, l.rencana)) : null, late(l) ? el("span", { class: "pill zero", style: "margin-left:6px" }, "TERLAMBAT") : null)),
+    el("div", { style: "display:grid;gap:6px;justify-items:end" }, el("div", { class: "num", style: "font:600 1.2rem/1 var(--display)" }, fmt(l.sisa) + " " + l.satuan),
+      el("button", { type: "button", class: "btn", onclick: () => { setMode("kembali"); tab("scan"); retSel = { [l.row]: l.sisa }; $("retQ").value = l.no; renderRet(); renderSave(); } }, "Kembalikan")))));
+}
+let sf = "all";
+function renderStock(){
+  const box = $("stokList"); box.textContent = "";
+  if (!items.length) { box.append(el("div", { class: "empty" }, loading ? "Memuat…" : "Data belum termuat.")); return; }
+  const q = $("stokQ").value.trim().toLowerCase();
+  let res = items.filter(it => !q || q.split(/\s+/).every(w => (it.code + " " + it.name + " " + it.loc).toLowerCase().includes(w)));
+  if (sf === "order") res = res.filter(it => it.min != null && it.stock < it.min);
+  if (sf === "zero") res = res.filter(it => it.stock <= 0);
+  if (sf === "pinjam") res = res.filter(it => it.lent > 0);
+  $("stokInfo").textContent = res.length.toLocaleString("id-ID") + " barang" + (res.length > 80 ? " · 80 pertama ditampilkan" : "");
+  res.slice(0, 80).forEach(it => box.append(el("div", { class: "srow" },
+    el("div", { style: "min-width:0;display:grid;gap:3px" }, el("span", { class: "code-t" }, it.code), el("span", { class: "nm" }, it.name),
+      el("span", { class: "meta" }, it.loc && it.loc !== "-" ? "Lokasi " + it.loc : "Lokasi belum diisi", it.min != null ? " · min " + fmt(it.min) : "", it.lent ? " · dipinjam " + fmt(it.lent) : "",
+        it.min != null && it.stock < it.min ? el("span", { class: "pill order", style: "margin-left:6px" }, "ORDER") : null)),
+    el("div", { class: "num" }, fmt(it.stock), el("small", {}, it.unit)),
+    el("div", { class: "acts" }, ["masuk", "sj", "fpb", "pinjam"].map(m => el("button", { type: "button", class: "btn", onclick: () => { setMode(m); tab("scan"); addCode(it.code); } }, "+ " + MODES[m].nama.split(" ")[0]))))));
+}
+function renderAll(){ renderCart(); renderRet(); renderForm(); renderSave(); renderHist(); if (!$("view-stok").hidden) renderStock(); if (!$("view-pinjam").hidden) renderLoans(); }
+
+/* ---------- wiring ---------- */
+function setMode(m){ mode = m; confirming = false; receipt = null; $("scanMsg").hidden = true;
+  document.querySelectorAll("#modes button").forEach(b => b.classList.toggle("on", b.dataset.m === m));
+  $("cartCard").hidden = m === "kembali"; $("retCard").hidden = m !== "kembali";
+  persist(); renderCart(); renderRet(); renderForm(); renderSave(); }
+function tab(t){ ["scan","pinjam","stok"].forEach(x => { $("view-" + x).hidden = x !== t; $("tab-" + x).setAttribute("aria-selected", String(x === t)); });
+  if (t === "stok") renderStock(); if (t === "pinjam") renderLoans(); }
+document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => tab(b.dataset.tab)));
+document.querySelectorAll("#modes button").forEach(b => b.addEventListener("click", () => setMode(b.dataset.m)));
+$("codeForm").addEventListener("submit", e => { e.preventDefault(); addCode($("codeInput").value); $("codeInput").value = ""; $("codeInput").focus(); });
+$("codeInput").addEventListener("paste", () => setTimeout(() => { const v = $("codeInput").value; if (v.trim()) { addCode(v); $("codeInput").value = ""; } }, 0));
+$("photo").addEventListener("change", onPhoto); $("photo2").addEventListener("change", onPhoto); $("photo3").addEventListener("change", onPhoto);
+/* ---------- live scanner ---------- */
+let scanStream = null, scanTimer = null, scanN = 0, lastCode = "", lastAt = 0, detector = null, busy = false;
+const scanCanvas = document.createElement("canvas"), scanCtx = scanCanvas.getContext("2d", { willReadFrequently: true });
+async function openScanner(){
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return scanFallback("Browser ini tidak mendukung kamera langsung.");
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+  } catch (e) {
+    const detail = " [" + (e && e.name || "error") + (e && e.message ? ": " + e.message : "") + "]";
+    const why = e && e.name === "NotAllowedError" ? "Kamera belum diizinkan untuk halaman ini. Izinkan kamera di setelan browser, atau tekan Kamera HP untuk memotret label." : e && e.name === "NotFoundError" ? "Kamera tidak ditemukan." : "Kamera tidak bisa dibuka.";
+    return scanFallback(why + detail);
+  }
+  const v = $("scanVideo"); v.srcObject = scanStream; await v.play().catch(() => {});
+  scanN = 0; $("scanCount").textContent = "0 scan"; $("scanLast").className = "last"; $("scanLast").textContent = "Arahkan kamera ke label QR.";
+  $("scanner").hidden = false;
+  try { if ("BarcodeDetector" in window) detector = new BarcodeDetector({ formats: ["qr_code", "code_128", "code_39", "ean_13"] }); } catch (e) { detector = null; }
+  const track = scanStream.getVideoTracks()[0];
+  try { const caps = track.getCapabilities ? track.getCapabilities() : {}; $("torchBtn").hidden = !caps.torch; } catch (e) { $("torchBtn").hidden = true; }
+  scanTimer = setInterval(scanTick, 180);
+}
+async function scanTick(){
+  const v = $("scanVideo"); if (busy || !v.videoWidth) return; busy = true;
+  try {
+    let code = null;
+    if (detector) { const r = await detector.detect(v); if (r && r.length) code = r[0].rawValue; }
+    else if (typeof jsQR === "function") {
+      const s = Math.min(1, 720 / Math.max(v.videoWidth, v.videoHeight)); const w = Math.round(v.videoWidth * s), h = Math.round(v.videoHeight * s);
+      scanCanvas.width = w; scanCanvas.height = h; scanCtx.drawImage(v, 0, 0, w, h);
+      const r = jsQR(scanCtx.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: "dontInvert" }); if (r && r.data) code = r.data;
+    }
+    if (code) {
+      const c = extract(code), now = Date.now();
+      if (c !== lastCode || now - lastAt > 2500) {
+        lastCode = c; lastAt = now;
+        const before = $("scanMsg").textContent;
+        addCode(c);
+        const box = $("scanMsg"), ok = box.className.includes("ok");
+        $("scanLast").className = "last " + (ok ? "ok" : "err"); $("scanLast").textContent = box.textContent || before;
+        if (ok) { scanN++; $("scanCount").textContent = scanN + " scan"; }
+      }
+    }
+  } catch (e) {} finally { busy = false; }
+}
+function closeScanner(){
+  clearInterval(scanTimer); scanTimer = null;
+  if (scanStream) scanStream.getTracks().forEach(t => t.stop()); scanStream = null;
+  $("scanVideo").srcObject = null; $("scanner").hidden = true;
+}
+function scanFallback(why){
+  const box = $("scanMsg");
+  msg(box, "warn", why + " ");
+  box.append(el("div", { class: "actions", style: "margin-top:8px" },
+    el("button", { type: "button", class: "btn primary", onclick: () => $("photo3").click() }, "📸 Kamera HP")));
+}
+let torchOn = false;
+$("torchBtn").addEventListener("click", async () => { try { torchOn = !torchOn; await scanStream.getVideoTracks()[0].applyConstraints({ advanced: [{ torch: torchOn }] }); } catch (e) {} });
+$("scanDone").addEventListener("click", closeScanner);
+document.addEventListener("visibilitychange", () => { if (document.hidden && scanStream) closeScanner(); });
+$("camBtn").addEventListener("click", openScanner);
+$("galBtn").addEventListener("click", () => $("photo2").click());
+$("clearCart").addEventListener("click", () => { cart = []; confirming = false; persist(); renderCart(); renderSave(); });
+$("retQ").addEventListener("input", renderRet);
+$("pjQ").addEventListener("input", renderLoans);
+$("refreshBtn").addEventListener("click", load);
+$("stokQ").addEventListener("input", renderStock);
+document.querySelectorAll("#stokFilters .chip").forEach(c => c.addEventListener("click", () => { sf = c.dataset.f;
+  document.querySelectorAll("#stokFilters .chip").forEach(x => x.setAttribute("aria-pressed", String(x === c))); renderStock(); }));
+$("pinForm").addEventListener("submit", e => { e.preventDefault();
+  const u = $("apiInput").value.trim();
+  if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(u)) { msg($("pinMsg"), "err", "Link harus berbentuk https://script.google.com/macros/s/…/exec"); return; }
+  API = u; store.set("api", API); pin = $("pinInput").value.trim(); store.set("pin", pin); $("pinMsg").hidden = true; load(); });
+try { if (KODE_AWAL) history.replaceState(null, "", location.pathname); } catch (e) {}
+
+setMode(mode); renderHist(); load();
+})();
+</script>
+</body>
+</html>
