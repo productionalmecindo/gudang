@@ -245,6 +245,7 @@ const MODES = {
     ["tanggal","Tanggal kembali","date"],["ket","Kondisi / keterangan","text"],["pic","PIC gudang","text"] ] }
 };
 
+let nomor = {};
 let items = [], byCode = new Map(), loans = [], loading = false, queued = KODE_AWAL || null;
 let pin = store.get("pin", "");
 let API = store.get("api", "");
@@ -285,6 +286,7 @@ async function load(){
     items = r.items.map(a => ({ code: a[0], name: a[1], unit: a[2], stock: a[3], min: a[4], loc: a[5], lent: a[6] }));
     byCode = new Map(items.map(i => [i.code, i]));
     loans = r.pinjam || [];
+    nomor = r.nomor || {};
     Object.entries(r.saran || {}).forEach(([k, arr]) => { const dl = $("dl-" + k); if (dl) { dl.textContent = ""; arr.forEach(v => dl.append(el("option", { value: v }))); } });
     $("syncTxt").textContent = items.length.toLocaleString("id-ID") + " barang · " + r.waktu;
     $("pinView").hidden = true; $("globalMsg").hidden = true;
@@ -342,6 +344,13 @@ async function onPhoto(e){
 function fv(){ return forms[mode] = forms[mode] || {}; }
 function renderForm(){
   const box = $("formBox"); box.textContent = ""; const v = fv();
+  if (mode !== "kembali") {
+    const lbl = { masuk: "No penerimaan", sj: "No SJ", fpb: "No FPB", pinjam: "No pinjam" }[mode];
+    const tglBeda = v.tanggal && v.tanggal.slice(0, 7) !== today().slice(0, 7);
+    box.append(el("div", { class: "f full" }, el("span", { class: "label" }, lbl + " (otomatis)"),
+      el("div", { style: "font:600 1.05rem/1.2 var(--mono);padding:6px 0" }, nomor[mode] || "dibuat saat disimpan"),
+      tglBeda ? el("span", { class: "note" }, "Tanggal beda bulan: nomor mengikuti bulan tanggal dokumen.") : null));
+  }
   MODES[mode].fields.forEach(([id, label, type, extra, req]) => {
     if (type === "date" && !v[id] && (id === "tanggal")) v[id] = today();
     const lab = el("label", { class: "label", for: "f-" + id }, label, req ? el("span", { class: "req" }, " *") : null);
@@ -443,6 +452,7 @@ async function save(){
       r = await run("simpanTransaksi", { pin, mode, header: v, lines: cart.filter(l => num(l.qty) > 0).map(l => ({ kode: l.code, qty: num(l.qty) })) });
       lines = r.lines.map(x => (mode === "masuk" ? "+" : "−") + fmt(x.qty) + " " + x.satuan + "  " + x.kode + "  → stok " + fmt(x.stok));
       receipt = { title: "Tersimpan: " + r.no, lines };
+      if (r.nomorBerikut) nomor[mode] = r.nomorBerikut;
       r.lines.forEach(x => { const it = byCode.get(x.kode); if (it) { it.stock = x.stok; if (mode === "pinjam") it.lent += x.qty; } });
       cart = [];
       ["noSJ", "remark"].forEach(k => { if (forms[mode]) delete forms[mode][k]; });
