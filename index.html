@@ -88,6 +88,18 @@ input.code{font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em
 .srow .acts{grid-column:1/-1;display:flex;gap:8px}
 .srow .acts button{font-size:.8rem;padding:5px 10px}
 .note{font-size:.85rem;color:var(--muted)}
+.sugg{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface);max-height:min(60vh,420px);overflow-y:auto}
+.sugg button{display:grid;grid-template-columns:1fr auto;gap:2px 10px;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 12px;font:inherit;cursor:pointer}
+.sugg button:last-child{border-bottom:0}
+.sugg button.act,.sugg button:hover{background:var(--bg)}
+.sugg .sc{font:600 .8rem/1 var(--mono);color:var(--muted)}
+.sugg .sn{grid-column:1;font-weight:500;overflow-wrap:anywhere}
+.sugg .ss{grid-column:2;grid-row:1/3;align-self:center;text-align:right;font:600 1.05rem/1 var(--display)}
+.sugg .ss small{display:block;font:500 .7rem/1.3 var(--body);color:var(--muted)}
+.sugg .sl{grid-column:1;font-size:.75rem;color:var(--muted)}
+.sugg .none{padding:10px 12px;color:var(--muted);font-size:.9rem}
+input.code{text-transform:none}
+
 .scanner{position:fixed;inset:0;z-index:50;background:#000;display:grid;grid-template-rows:1fr auto}
 .scanner video{width:100%;height:100%;object-fit:cover;min-height:0}
 .scanner .frame{position:absolute;left:50%;top:42%;width:min(70vw,320px);aspect-ratio:1;transform:translate(-50%,-50%);border:3px solid var(--accent);border-radius:14px;box-shadow:0 0 0 100vmax rgba(0,0,0,.45)}
@@ -168,7 +180,7 @@ nav button{font-size:.98rem}
         <input type="file" id="photo2" accept="image/*" hidden>
         <input type="file" id="photo3" accept="image/*,application/pdf" capture="environment" hidden>
       </div>
-      <form id="codeForm" autocomplete="off"><input type="text" id="codeInput" class="code" placeholder="Ketik / tempel kode, atau scanner, lalu Enter"></form>
+      <form id="codeForm" autocomplete="off" style="display:grid;gap:6px"><input type="search" id="codeInput" class="code" placeholder="Cari kode / nama barang, atau scanner" enterkeyhint="search" autocapitalize="off" autocorrect="off" spellcheck="false"><div id="sugg" class="sugg" hidden></div></form>
       <div id="scanMsg" class="msg" hidden></div>
     </div>
 
@@ -518,8 +530,47 @@ function tab(t){ ["scan","pinjam","stok"].forEach(x => { $("view-" + x).hidden =
   if (t === "stok") renderStock(); if (t === "pinjam") renderLoans(); }
 document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => tab(b.dataset.tab)));
 document.querySelectorAll("#modes button").forEach(b => b.addEventListener("click", () => setMode(b.dataset.m)));
-$("codeForm").addEventListener("submit", e => { e.preventDefault(); addCode($("codeInput").value); $("codeInput").value = ""; $("codeInput").focus(); });
-$("codeInput").addEventListener("paste", () => setTimeout(() => { const v = $("codeInput").value; if (v.trim()) { addCode(v); $("codeInput").value = ""; } }, 0));
+/* ---------- cari barang (dropdown) ---------- */
+let suggIdx = -1, suggRes = [];
+function searchItems(q){
+  const ws = q.toLowerCase().split(/\s+/).filter(Boolean); if (!ws.length) return [];
+  const qU = q.trim().toUpperCase(), out = [];
+  for (const it of items) {
+    const hay = (it.code + " " + it.name + " " + it.loc).toLowerCase();
+    if (ws.every(w => hay.includes(w))) { out.push(it); }
+  }
+  out.sort((a, b) => (b.code.startsWith(qU) - a.code.startsWith(qU)) || a.name.length - b.name.length);
+  return out.slice(0, 12);
+}
+function renderSugg(){
+  const box = $("sugg"), q = $("codeInput").value.trim();
+  if (q.length < 2 || !items.length) { box.hidden = true; suggRes = []; return; }
+  suggRes = searchItems(q); box.textContent = ""; box.hidden = false;
+  if (!suggRes.length) { box.append(el("div", { class: "none" }, "Tidak ada barang yang cocok dengan \u201c" + q + "\u201d.")); return; }
+  suggRes.forEach((it, i) => box.append(el("button", { type: "button", class: i === suggIdx ? "act" : "",
+      onmousedown: e => e.preventDefault(), onclick: () => pickSugg(i) },
+    el("span", { class: "sc" }, it.code), el("span", { class: "ss" }, fmt(it.stock), el("small", {}, it.unit)),
+    el("span", { class: "sn" }, it.name), el("span", { class: "sl" }, it.loc && it.loc !== "-" ? "Lokasi " + it.loc : ""))));
+}
+function pickSugg(i){ const it = suggRes[i]; if (!it) return; addCode(it.code); $("codeInput").value = ""; suggIdx = -1; renderSugg(); $("codeInput").focus(); }
+$("codeInput").addEventListener("input", () => { suggIdx = -1; renderSugg(); });
+$("codeInput").addEventListener("keydown", e => {
+  if (!suggRes.length || $("sugg").hidden) return;
+  if (e.key === "ArrowDown") { e.preventDefault(); suggIdx = Math.min(suggRes.length - 1, suggIdx + 1); renderSugg(); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); suggIdx = Math.max(0, suggIdx - 1); renderSugg(); }
+  else if (e.key === "Escape") { $("sugg").hidden = true; }
+});
+$("codeInput").addEventListener("blur", () => setTimeout(() => { $("sugg").hidden = true; }, 150));
+$("codeInput").addEventListener("focus", renderSugg);
+$("codeForm").addEventListener("submit", e => { e.preventDefault();
+  const v = $("codeInput").value.trim(); if (!v) return;
+  const exact = byCode.get(extract(v));
+  if (exact || !items.length) addCode(v);
+  else if (suggIdx >= 0 && suggRes[suggIdx]) return pickSugg(suggIdx);
+  else if (suggRes.length === 1) return pickSugg(0);
+  else { renderSugg(); if (suggRes.length) msg($("scanMsg"), "warn", "Ada " + suggRes.length + " barang cocok. Ketuk salah satu di daftar."); else addCode(v); return; }
+  $("codeInput").value = ""; renderSugg(); $("codeInput").focus(); });
+$("codeInput").addEventListener("paste", () => setTimeout(() => { const v = $("codeInput").value; if (/[A-Za-z]{2,3}\d{3,5}/.test(v) && byCode.get(extract(v))) { addCode(v); $("codeInput").value = ""; renderSugg(); } }, 0));
 $("photo").addEventListener("change", onPhoto); $("photo2").addEventListener("change", onPhoto); $("photo3").addEventListener("change", onPhoto);
 /* ---------- live scanner ---------- */
 let scanStream = null, scanTimer = null, scanN = 0, lastCode = "", lastAt = 0, detector = null, busy = false;
