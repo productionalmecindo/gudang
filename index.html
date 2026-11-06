@@ -149,6 +149,7 @@ nav button{font-size:.98rem}
 </div></header>
 
 <main>
+  <div id="peralihan" class="msg warn" hidden>⚠️ <b>Mode peralihan:</b> stok masih disamakan dengan INVENTORY lama 3x sehari. Jangan catat transaksi yang sama di file lama dan di aplikasi ini.</div>
   <div id="globalMsg" hidden></div>
 
   <section id="pinView" class="card" hidden>
@@ -302,6 +303,7 @@ async function load(){
     byCode = new Map(items.map(i => [i.code, i]));
     loans = r.pinjam || [];
     nomor = r.nomor || {};
+    $("peralihan").hidden = !r.peralihan;
     Object.entries(r.saran || {}).forEach(([k, arr]) => { const dl = $("dl-" + k); if (dl) { dl.textContent = ""; arr.forEach(v => dl.append(el("option", { value: v }))); } });
     $("syncTxt").textContent = items.length.toLocaleString("id-ID") + " barang · " + r.waktu;
     $("pinView").hidden = true; $("globalMsg").hidden = true;
