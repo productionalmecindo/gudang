@@ -216,7 +216,13 @@ nav button{font-size:.98rem}
     <div class="card" id="reprintCard" hidden><div class="label">Cetak ulang Surat Jalan</div>
       <select id="sjSel" aria-label="Pilih SJ"></select>
       <div class="actions"><button type="button" class="btn primary" id="sjPrint">🖨 Siapkan PDF</button></div>
-      <div id="sjOut" style="display:grid;gap:8px"></div></div>
+      <div id="sjOut" style="display:grid;gap:8px"></div>
+      <details class="note"><summary>⚙ Posisi cetak (Epson LX-310)</summary>
+        <div class="form" style="margin-top:8px">
+          <div class="f"><label class="label" for="posX">Geser kiri / kanan (mm)</label><input type="number" id="posX" step="1" inputmode="numeric"></div>
+          <div class="f"><label class="label" for="posY">Geser atas / bawah (mm)</label><input type="number" id="posY" step="1" inputmode="numeric"></div>
+          <div class="f full">Angka minus = geser ke kiri / ke atas. Berlaku untuk PDF yang dibuat berikutnya di perangkat ini. Standar: kiri −6, atas 0.</div>
+        </div></details></div>
     <div class="card"><h2>Riwayat (HP ini)</h2><div id="hist" class="hist"></div></div>
   </section>
 
@@ -562,6 +568,14 @@ const LOGO_ALMEC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAisAAAA4CAIAAA
 function buatPdfSJ(c){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: "pt", format: "letter" });
+  // geser posisi cetak (mm → pt); negatif = ke kiri / ke atas
+  const pos = posisiCetak(), ox = pos.x * 2.8346, oy = pos.y * 2.8346;
+  if (ox || oy) {
+    const _t = doc.text.bind(doc), _l = doc.line.bind(doc), _i = doc.addImage.bind(doc);
+    doc.text = (t, x, y, o) => _t(t, x + ox, y + oy, o);
+    doc.line = (a, b, c, d) => _l(a + ox, b + oy, c + ox, d + oy);
+    doc.addImage = (img, f, x, y, w, h) => _i(img, f, x + ox, y + oy, w, h);
+  }
   const T = "times", COL = [47.5, 87.5, 317.5, 363.5, 403.5, 584.5], BAWAH = 792 - 40;
   const fq = q => (Math.round(Number(q) * 1000) / 1000).toLocaleString("id-ID");
   doc.setLineWidth(0.6); doc.setTextColor(0);
@@ -624,6 +638,7 @@ function buatPdfSJ(c){
   });
   return doc;
 }
+function posisiCetak(){ const p = store.get("posCetak", { x: -6, y: 0 }); return { x: Number(p.x) || 0, y: Number(p.y) || 0 }; }
 function namaFileSJ(c){ return "SJ " + String(c.no || "").replace(/[\\/:*?"<>|]+/g, "-") + ".pdf"; }
 /** Buat PDF → simpan ke Drive lewat server → tampilkan link Buka / Unduh di kotak `box`. */
 async function siapkanSJ(c, box){
@@ -817,6 +832,8 @@ $("galBtn").addEventListener("click", () => $("photo2").click());
 $("clearCart").addEventListener("click", () => { cart = []; confirming = false; persist(); renderCart(); renderSave(); });
 $("retQ").addEventListener("input", renderRet);
 $("sjPrint").addEventListener("click", cetakUlang);
+(() => { const p = posisiCetak(); $("posX").value = p.x; $("posY").value = p.y;
+  ["posX", "posY"].forEach(id => $(id).addEventListener("input", () => store.set("posCetak", { x: Number($("posX").value) || 0, y: Number($("posY").value) || 0 }))); })();
 $("pjQ").addEventListener("input", renderLoans);
 $("refreshBtn").addEventListener("click", load);
 $("stokQ").addEventListener("input", renderStock);
