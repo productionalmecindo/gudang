@@ -45,7 +45,7 @@ h2{font:700 1.25rem/1.1 var(--display);letter-spacing:.03em;text-transform:upper
 .mode button small{display:block;font:500 .72rem/1.3 var(--body);letter-spacing:0;text-transform:none;margin-top:3px}
 .mode button.on.in{background:var(--in);color:#fff}
 .mode button.on.out{background:var(--out);color:#fff}
-.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:10px 14px;font:600 .95rem/1.1 var(--body);display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+.btn{text-decoration:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:10px 14px;font:600 .95rem/1.1 var(--body);display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
 .btn:disabled{opacity:.5}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .btn.big{padding:14px 18px;font-size:1rem}
@@ -89,6 +89,14 @@ input.code{font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em
 .srow .acts{grid-column:1/-1;display:flex;gap:8px}
 .srow .acts button{font-size:.8rem;padding:5px 10px}
 .note{font-size:.85rem;color:var(--muted)}
+:root{--sel-bg:var(--steel);--sel-ink:#ffffff;--hover:#e3e7e4}
+@media (prefers-color-scheme: dark){:root{--sel-bg:var(--accent);--sel-ink:var(--accent-ink);--hover:#2c393e}}
+.chip[aria-pressed="true"],#formBox .seg button.on{background:var(--sel-bg);border-color:var(--sel-bg);color:var(--sel-ink);font-weight:700}
+.seg button.on::before{content:"\2713  "}
+.sugg button.act,.sugg button:hover{background:var(--hover);box-shadow:inset 4px 0 0 var(--accent)}
+.spkinfo{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:.8rem;color:var(--muted)}
+.pill.st-aktif{background:var(--in-bg);color:var(--in)} .pill.st-siap{background:var(--pin-bg);color:var(--pin)} .pill.st-lain{background:var(--bg);color:var(--muted)}
+
 .credit{text-align:center;font:500 .75rem/1.4 var(--body);letter-spacing:.06em;color:var(--muted);opacity:.75;padding:4px 16px calc(18px + env(safe-area-inset-bottom,0px))}
 
 .sugg{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface);max-height:min(60vh,420px);overflow-y:auto}
@@ -207,7 +215,8 @@ nav button{font-size:.98rem}
     <div class="card"><div class="label">4 · Simpan</div><div id="saveArea"></div></div>
     <div class="card" id="reprintCard" hidden><div class="label">Cetak ulang Surat Jalan</div>
       <select id="sjSel" aria-label="Pilih SJ"></select>
-      <div class="actions"><button type="button" class="btn primary" id="sjPrint">🖨 Cetak</button><button type="button" class="btn" id="sjDl">⬇ Unduh PDF</button></div></div>
+      <div class="actions"><button type="button" class="btn primary" id="sjPrint">🖨 Siapkan PDF</button></div>
+      <div id="sjOut" style="display:grid;gap:8px"></div></div>
     <div class="card"><h2>Riwayat (HP ini)</h2><div id="hist" class="hist"></div></div>
   </section>
 
@@ -256,9 +265,9 @@ const MODES = {
     ["tanggal","Tanggal tiba","date"],["tglSJ","Tanggal SJ supplier","date"],["supplier","Supplier","text","supplier",1],["noSJ","No SJ supplier","text"],["remark","Remarks","text"],["pic","PIC gudang","text"] ] },
   sj:     { nama: "Surat Jalan", tombol: "Simpan Surat Jalan", fields: [
     ["jenis","Jenis SJ","seg",["Pengiriman","Outsource"],1],["tanggal","Tanggal barang keluar","date"],["penerima","Customer (Ship To)","text","customer",1],["alamat","Alamat","text","alamat"],["kontak","PIC penerima","text","kontak"],
-    ["spk","SPK / Pekerjaan","text","spk"],["project","Project","text"],["remark","Keterangan","text"],["pic","PIC gudang","text"] ] },
+    ["spk","SPK (dari produksi)","spk"],["project","Project","text"],["remark","Keterangan","text"],["pic","PIC gudang","text"] ] },
   fpb:    { nama: "FPB", tombol: "Simpan FPB", fields: [
-    ["tanggal","Tanggal barang keluar","date"],["peminta","Peminta","text","peminta",1],["bagian","Bagian","text","bagian"],["spk","SPK / Pekerjaan","text","spk"],["project","Project","text"],["remark","Keterangan","text"],["pic","PIC gudang","text"] ] },
+    ["tanggal","Tanggal barang keluar","date"],["peminta","Peminta","text","peminta",1],["bagian","Bagian","text","bagian"],["spk","SPK (dari produksi)","spk"],["project","Project","text"],["remark","Keterangan","text"],["pic","PIC gudang","text"] ] },
   pinjam: { nama: "Peminjaman", tombol: "Simpan Peminjaman", fields: [
     ["tanggal","Tanggal pinjam","date"],["peminjam","Peminjam","text","peminjam",1],["bagian","Bagian / lokasi kerja","text","bagian"],["rencana","Rencana kembali","date"],["remark","Keterangan","text"],["pic","PIC gudang","text"] ] },
   kembali:{ nama: "Pengembalian", tombol: "Simpan Pengembalian", fields: [
@@ -308,6 +317,7 @@ async function load(){
     loans = r.pinjam || [];
     nomor = r.nomor || {};
     sjList = r.sjTerakhir || []; renderReprint();
+    spkList = r.spk || [];
     $("peralihan").hidden = !r.peralihan;
     Object.entries(r.saran || {}).forEach(([k, arr]) => { const dl = $("dl-" + k); if (dl) { dl.textContent = ""; arr.forEach(v => dl.append(el("option", { value: v }))); } });
     $("syncTxt").textContent = items.length.toLocaleString("id-ID") + " barang · " + r.waktu;
@@ -362,6 +372,42 @@ async function onPhoto(e){
   catch(err){ msg($("scanMsg"), "err", "Foto tidak bisa dibaca. Coba lagi atau ketik kodenya."); }
 }
 
+/* ---------- pilih SPK (dari Laporan Produksi) ---------- */
+let spkList = [];
+function cariSpk(q){
+  const ws = q.toLowerCase().split(/\s+/).filter(Boolean);
+  return spkList.filter(s => !ws.length || ws.every(w => (s.no + " " + s.customer + " " + s.nama).toLowerCase().includes(w))).slice(0, 15);
+}
+const pillSt = st => el("span", { class: "pill " + (/^aktif/i.test(st) ? "st-aktif" : /siap/i.test(st) ? "st-siap" : "st-lain") }, st || "-");
+function spkField(v){
+  const wrap = el("div", { style: "display:grid;gap:6px" });
+  const inp = el("input", { type: "search", id: "f-spk", value: v.spk || "", placeholder: spkList.length ? "Cari no SPK, customer, atau nama order" : "No SPK", autocomplete: "off", enterkeyhint: "search" });
+  const list = el("div", { class: "sugg", hidden: true }), info = el("div", { class: "spkinfo" });
+  let act = -1, res = [];
+  const pick = s => { const cur = String(v.penerima || "").trim();
+    v.spk = s.no; v.project = s.nama;
+    if (mode === "sj" && (!cur || cur === v._custOtomatis)) { v.penerima = s.customer; v._custOtomatis = s.customer; }
+    confirming = false; receipt = null; persist(); renderForm(); renderSave(); };
+  const showInfo = () => { info.textContent = ""; const s = spkList.find(x => x.no === (v.spk || "").trim());
+    if (s) info.append(pillSt(s.status), el("span", {}, s.customer), el("span", {}, "· " + s.nama), s.due ? el("span", {}, "· due " + s.due) : null);
+    else if ((v.spk || "").trim() && spkList.length) info.append(el("span", { class: "pill zero" }, "Tidak ada di daftar SPK produksi — pilih dari daftar")); };
+  const show = () => { if (!spkList.length) { list.hidden = true; return; }
+    res = cariSpk(inp.value.trim() === (v.spk || "") && spkList.some(x => x.no === v.spk) ? "" : inp.value.trim()); list.textContent = ""; list.hidden = false;
+    if (!res.length) { list.append(el("div", { class: "none" }, "Tidak ada SPK yang cocok.")); return; }
+    res.forEach((s, i) => list.append(el("button", { type: "button", class: i === act ? "act" : "", onmousedown: e => e.preventDefault(), onclick: () => pick(s) },
+      el("span", { class: "sc" }, s.no), el("span", { class: "ss" }, pillSt(s.status)),
+      el("span", { class: "sn" }, s.customer), el("span", { class: "sl" }, s.nama + (s.due ? " · due " + s.due : ""))))); };
+  inp.addEventListener("focus", () => { act = -1; show(); });
+  inp.addEventListener("input", () => { v.spk = inp.value.trim(); act = -1; confirming = false; receipt = null; persist(); show(); showInfo(); renderSave(); });
+  inp.addEventListener("keydown", e => {
+    if (list.hidden || !res.length) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); act = Math.min(res.length - 1, act + 1); show(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); act = Math.max(0, act - 1); show(); }
+    else if (e.key === "Enter") { e.preventDefault(); pick(res[Math.max(0, act)]); }
+    else if (e.key === "Escape") list.hidden = true; });
+  inp.addEventListener("blur", () => setTimeout(() => { list.hidden = true; }, 150));
+  showInfo(); wrap.append(inp, list, info); return wrap;
+}
 /* ---------- form ---------- */
 function fv(){ return forms[mode] = forms[mode] || {}; }
 function renderForm(){
@@ -376,13 +422,15 @@ function renderForm(){
     if (type === "date" && !v[id] && (id === "tanggal")) v[id] = today();
     const lab = el("label", { class: "label", for: "f-" + id }, label, req ? el("span", { class: "req" }, " *") : null);
     let inp;
-    if (type === "seg") {
+    if (type === "spk") {
+      inp = spkField(v);
+    } else if (type === "seg") {
       inp = el("div", { class: "seg", id: "f-" + id }, extra.map(o => el("button", { type: "button", class: v[id] === o ? "on" : "", onclick: () => { v[id] = o; persist(); renderForm(); renderSave(); } }, o)));
     } else {
       inp = el("input", { type: type, id: "f-" + id, value: v[id] || "", list: extra ? "dl-" + extra : null, max: type === "date" && id === "tanggal" ? today() : null });
       inp.addEventListener("input", () => { v[id] = inp.value; confirming = false; receipt = null; persist(); renderSave(); if (id === "tanggal") updateNoPrev(); });
     }
-    box.append(el("div", { class: "f" + (["remark","alamat","ket"].includes(id) ? " full" : "") }, lab, inp));
+    box.append(el("div", { class: "f" + (["remark","alamat","ket","spk"].includes(id) ? " full" : "") }, lab, inp));
   });
   persist(); updateNoPrev();
 }
@@ -444,6 +492,7 @@ function check(){
   if (!items.length) e.push("Data belum termuat.");
   MODES[mode].fields.forEach(([id, label, , , req]) => { if (req && !String(v[id] || "").trim()) e.push("Isi " + label.toLowerCase() + "."); });
   if ((v.tanggal || "") > today()) e.push("Tanggal tidak boleh setelah hari ini.");
+  if ((mode === "sj" || mode === "fpb") && spkList.length && String(v.spk || "").trim() && !spkList.some(s => s.no === String(v.spk).trim())) e.push("Pilih SPK dari daftar produksi.");
   if (mode === "kembali") { if (!Object.keys(retSel).length) e.push("Pilih alat dan jumlah yang dikembalikan."); }
   else if (!cart.some(l => num(l.qty) > 0)) e.push("Belum ada barang dengan jumlah > 0.");
   return e;
@@ -456,9 +505,9 @@ function ringkasan(){
 function renderSave(){
   const box = $("saveArea"); box.textContent = "";
   if (receipt) { box.append(el("div", { class: "msg ok" }, receipt.title), el("div", { class: "receipt" }, receipt.lines.map(t => el("div", {}, t))),
-    receipt.cetak ? el("div", { class: "actions" },
-      el("button", { type: "button", class: "btn primary big", onclick: () => cetakSJ(receipt.cetak) }, "🖨 Cetak SJ"),
-      el("button", { type: "button", class: "btn", onclick: () => unduhSJ(receipt.cetak) }, "⬇ Unduh PDF")) : null,
+    receipt.cetak ? (() => { const out = el("div", { style: "display:grid;gap:8px" });
+      out.append(el("button", { type: "button", class: "btn primary big", onclick: () => siapkanSJ(receipt.cetak, out) }, "🖨 Cetak Surat Jalan"));
+      return out; })() : null,
     el("div", { class: "note" }, "Stok sudah diperbarui dan notifikasi Telegram terkirim.")); return; }
   const e = check();
   if (e.length) { box.append(el("div", { class: "note" }, "Sebelum menyimpan: " + e.join(" "))); return; }
@@ -576,26 +625,37 @@ function buatPdfSJ(c){
   return doc;
 }
 function namaFileSJ(c){ return "SJ " + String(c.no || "").replace(/[\\/:*?"<>|]+/g, "-") + ".pdf"; }
-function cetakSJ(c){
-  if (!window.jspdf) { msg($("scanMsg"), "err", "Modul PDF belum termuat. Periksa internet lalu muat ulang halaman."); return; }
-  const doc = buatPdfSJ(c);
-  let w = null;
-  try { w = window.open(URL.createObjectURL(doc.output("blob")), "_blank"); } catch (e) {}
-  if (!w) doc.save(namaFileSJ(c));
+/** Buat PDF → simpan ke Drive lewat server → tampilkan link Buka / Unduh di kotak `box`. */
+async function siapkanSJ(c, box){
+  box.textContent = "";
+  if (!window.jspdf) { box.append(el("div", { class: "msg err" }, "Modul PDF belum termuat. Periksa internet lalu muat ulang halaman.")); return; }
+  box.append(el("div", { class: "msg ok" }, "Menyiapkan PDF " + c.no + "…"));
+  try {
+    const b64 = buatPdfSJ(c).output("datauristring").split(",")[1];
+    const r = await run("simpanPdfSJ", { pin, no: c.no, pdf: b64 });
+    box.textContent = "";
+    box.append(el("div", { class: "msg ok" }, "PDF siap: " + r.nama),
+      el("div", { class: "actions" },
+        el("a", { class: "btn primary big", href: r.view, target: "_blank", rel: "noopener" }, "🖨 Buka PDF untuk cetak"),
+        el("a", { class: "btn", href: r.download, target: "_blank", rel: "noopener" }, "⬇ Unduh PDF")),
+      el("div", { class: "note" }, "PDF tersimpan di Google Drive folder \u201cSurat Jalan ALMEC\u201d. Cetak dengan ukuran Letter, skala 100%."));
+  } catch (e) {
+    box.textContent = "";
+    box.append(el("div", { class: "msg err" }, "PDF gagal disiapkan: " + errText(e)));
+  }
 }
-function unduhSJ(c){ if (window.jspdf) buatPdfSJ(c).save(namaFileSJ(c)); }
 let sjList = [];
 function renderReprint(){
   const sel = $("sjSel"); if (!sel) return; sel.textContent = "";
   if (!sjList.length) { sel.append(el("option", { value: "" }, "Belum ada SJ di sistem baru")); return; }
   sjList.forEach(s => sel.append(el("option", { value: s.no }, s.no + " · " + s.tgl + " · " + s.customer)));
 }
-async function cetakUlang(unduh){
-  const no = $("sjSel").value; if (!no) return;
+async function cetakUlang(){
+  const no = $("sjSel").value, box = $("sjOut"); if (!no) return;
   const b = $("sjPrint"); b.disabled = true; b.textContent = "Menyiapkan…";
-  try { const c = await run("ambilSJ", { pin, no }); unduh ? unduhSJ(c) : cetakSJ(c); }
-  catch (e) { msg($("scanMsg"), "err", "Gagal mengambil SJ: " + errText(e)); }
-  finally { b.disabled = false; b.textContent = "🖨 Cetak"; }
+  try { const c = await run("ambilSJ", { pin, no }); await siapkanSJ(c, box); }
+  catch (e) { box.textContent = ""; box.append(el("div", { class: "msg err" }, "Gagal mengambil SJ: " + errText(e))); }
+  finally { b.disabled = false; b.textContent = "🖨 Siapkan PDF"; }
 }
 
 /* ---------- views ---------- */
@@ -756,8 +816,7 @@ $("camBtn").addEventListener("click", openScanner);
 $("galBtn").addEventListener("click", () => $("photo2").click());
 $("clearCart").addEventListener("click", () => { cart = []; confirming = false; persist(); renderCart(); renderSave(); });
 $("retQ").addEventListener("input", renderRet);
-$("sjPrint").addEventListener("click", () => cetakUlang(false));
-$("sjDl").addEventListener("click", () => cetakUlang(true));
+$("sjPrint").addEventListener("click", cetakUlang);
 $("pjQ").addEventListener("input", renderLoans);
 $("refreshBtn").addEventListener("click", load);
 $("stokQ").addEventListener("input", renderStock);
